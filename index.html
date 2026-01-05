@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>3×3×3 Resolutions</title>
+
+  <!-- PWA (optional but works nicely on Replit / hosted) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b0f17">
+
+  <style>
+    :root{
+      --bg:#0b0f17;
+      --muted:#93a4bd;
+      --text:#e9f0ff;
+      --line:#243248;
+      --ok:#2bd576;
+      --warn:#ffcc66;
+      --danger:#ff6b6b;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: radial-gradient(1200px 800px at 20% 10%, #182238 0%, var(--bg) 50%) fixed;
+      color:var(--text);
+      line-height:1.35;
+    }
+    .wrap{ max-width: 1040px; margin: 0 auto; padding: 22px 16px 40px; }
+    header{ display:flex; gap:14px; align-items:flex-start; justify-content:space-between; margin-bottom: 10px; flex-wrap:wrap; }
+    h1{ font-size: 20px; margin: 0 0 4px; letter-spacing: .2px; }
+    .sub{ color:var(--muted); font-size: 13px; margin:0; }
+
+    .top-actions{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+
+    button, select{
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor:pointer;
+      transition: transform .05s ease, border-color .15s ease;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    button:active{ transform: translateY(1px); }
+    select{ cursor:pointer; font-weight: 700; }
+
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+
+    .pill{
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      border-radius: 999px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      white-space:nowrap;
+    }
+    .pill.ok{ color:#06210f; background: rgba(43,213,118,.9); border-color: rgba(43,213,118,.9); }
+    .pill.warn{ color:#3a2b00; background: rgba(255,204,102,.9); border-color: rgba(255,204,102,.9); }
+
+    .footer{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+    }
+    .big{ font-size: 14px; font-weight: 900; margin:0; }
+    .tiny{ margin:0; color:var(--muted); font-size: 12px; }
+    .progress{ display:flex; flex-direction:column; align-items:flex-end; gap: 6px; min-width: 220px; }
+    .bar{
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.06);
+      overflow:hidden;
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .bar > div{ height: 100%; width: 0%; background: rgba(43,213,118,.95); }
+
+    .grid{ display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+    @media(min-width: 900px){ .grid{ grid-template-columns: 1fr 1fr 1fr; } }
+
+    .card{
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      padding: 14px 14px 12px;
+      box-shadow: var(--shadow);
+      min-height: 240px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .card h2{
+      font-size: 16px; margin: 0;
+      display:flex; justify-content:space-between; align-items:center; gap: 10px;
+    }
+    .meta{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .list{ display:flex; flex-direction:column; gap: 8px; padding-top: 2px; flex: 1; }
+    .item{
+      display:flex; align-items:center; gap: 10px;
+      padding: 10px 10px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 14px;
+    }
+    .item input[type="checkbox"]{
+      width: 20px; height: 20px;
+      accent-color: var(--ok);
+      cursor:pointer;
+    }
+    .item label{
+      cursor:pointer; flex: 1; user-select:none;
+      display:flex; align-items:center; gap: 8px;
+      color: var(--text); font-size: 14px;
+    }
+    .item .num{ color: var(--muted); font-weight: 900; font-size: 12px; min-width: 22px; text-align:right; }
+
+    .card-actions{ display:flex; gap: 10px; margin-top: 2px; }
+    .card-actions button{ width:100%; }
+
+    .section{
+      margin-top: 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      padding: 14px;
+    }
+    .section h3{ margin: 0 0 10px; font-size: 14px; }
+    table{ width:100%; border-collapse: collapse; font-size: 13px; }
+    th, td{
+      text-align:left; padding: 10px 8px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      color: var(--text);
+      vertical-align: top;
+    }
+    th{ color: var(--muted); font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing:.06em; }
+    td.muted{ color: var(--muted); }
+    .help{ margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      padding: 2px 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>3×3×3 Resolutions</h1>
+        <p class="sub" id="weekLabel">Week</p>
+      </div>
+
+      <div class="top-actions">
+        <div class="row" title="Navigate weeks">
+          <button id="prevWeekBtn" aria-label="Previous week">←</button>
+          <select id="weekSelect" aria-label="Select week"></select>
+          <button id="nextWeekBtn" aria-label="Next week">→</button>
+        </div>
+
+        <button id="resetWeekBtn" title="Clears only the selected week">Reset week</button>
+        <button id="wipeAllBtn" title="Deletes all saved history">Wipe all data</button>
+      </div>
+    </header>
+
+    <div class="footer">
+      <div>
+        <p class="big">Selected week</p>
+        <p class="tiny" id="summaryText">Loading…</p>
+        <div class="row" style="margin-top:8px;">
+          <span class="pill" id="pillAchieved">0 / 3 achieved</span>
+          <span class="pill" id="pillStreak">Streak: 0</span>
+        </div>
+      </div>
+      <div class="progress">
+        <div class="tiny" id="progressText">0 / 9 towards target</div>
+        <div class="bar" aria-label="Weekly progress"><div id="progressFill"></div></div>
+      </div>
+    </div>
+
+    <div class="grid" id="cards"></div>
+
+    <div class="section">
+      <h3>Weekly history</h3>
+      <div class="help" style="margin-top:-6px; margin-bottom:10px;">
+        Achieved = <b>3+</b> checkmarks in that category for the week.
+      </div>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Gym</th>
+              <th>Meditation</th>
+              <th>No alcohol</th>
+              <th>Categories achieved</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="help">
+      Tips: Use “+ Add checkbox” if you did extra sessions. The goal is <b>3+</b> per category to count as achieved.
+      Data saves locally in your browser (no account, no cost).
+      On Replit/hosted you can also “Add to Home Screen” (PWA).
+    </p>
+  </div>
+
+<script>
+(() => {
+  // -------- Config --------
+  const TARGET = 3; // achieved threshold
+  const GOALS = [
+    { id: "gym",        title: "Gym" },
+    { id: "meditation", title: "Meditation" },
+    { id: "noAlcohol",  title: "No alcohol" },
+  ];
+
+  // -------- Date/Week helpers (ISO week, Monday start) --------
+  const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+  function pad2(n){ return String(n).padStart(2,"0"); }
+
+  function startOfISOWeek(d){
+    const date = new Date(d);
+    date.setHours(0,0,0,0);
+    const day = (date.getDay() + 6) % 7; // Mon=0 ... Sun=6
+    date.setDate(date.getDate() - day);
+    return date;
+  }
+
+  function isoWeekKey(d){
+    const date = new Date(d);
+    date.setHours(0,0,0,0);
+
+    // Thursday decides ISO year
+    const day = (date.getDay() + 6) % 7;
+    date.setDate(date.getDate() - day + 3);
+
+    const isoYear = date.getFullYear();
+
+    // First Thursday of ISO year
+    const firstThu = new Date(isoYear, 0, 4);
+    firstThu.setHours(0,0,0,0);
+    const firstDay = (firstThu.getDay() + 6) % 7;
+    firstThu.setDate(firstThu.getDate() - firstDay + 3);
+
+    const week = 1 + Math.round((date - firstThu) / MS_WEEK);
+    return `${isoYear}-W${pad2(week)}`;
+  }
+
+  function weekKeyToApproxDate(weekKey){
+    // Produce a date inside that ISO week (Monday) for navigation.
+    // Parse "YYYY-Www"
+    const m = /^(\d{4})-W(\d{2})$/.exec(weekKey);
+    if(!m) return new Date();
+    const year = Number(m[1]);
+    const week = Number(m[2]);
+
+    // ISO week 1 is the week with Jan 4th. Find Monday of week 1 then add weeks.
+    const jan4 = new Date(year, 0, 4);
+    const week1Mon = startOfISOWeek(jan4);
+    const d = new Date(week1Mon);
+    d.setDate(week1Mon.getDate() + (week - 1) * 7);
+    return d;
+  }
+
+  function addWeeksToKey(weekKey, delta){
+    const d = weekKeyToApproxDate(weekKey);
+    d.setDate(d.getDate() + delta * 7);
+    return isoWeekKey(d);
+  }
+
+  function formatDate(d){
+    return d.toLocaleDateString(undefined, { weekday:"short", day:"numeric", month:"short", year:"numeric" });
+  }
+
+  function labelForWeek(weekKey){
+    const d = weekKeyToApproxDate(weekKey);
+    const start = startOfISOWeek(d);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return `${weekKey} • Mon ${formatDate(start)} → Sun ${formatDate(end)}`;
+  }
+
+  // -------- Storage --------
+  const STORAGE_KEY = "resolutionsTracker.v2";
+
+  function loadAll(){
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    catch { return {}; }
+  }
+  function saveAll(obj){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  }
+
+  function ensureWeek(all, weekKey){
+    if(!all[weekKey]) all[weekKey] = {};
+    for (const g of GOALS){
+      if(!Array.isArray(all[weekKey][g.id])) all[weekKey][g.id] = [false,false,false];
+      // Defensive: ensure at least 3 slots exist
+      while(all[weekKey][g.id].length < 3) all[weekKey][g.id].push(false);
+    }
+    return all[weekKey];
+  }
+
+  // -------- UI refs --------
+  const cardsEl = document.getElementById("cards");
+  const weekLabelEl = document.getElementById("weekLabel");
+  const summaryTextEl = document.getElementById("summaryText");
+  const progressTextEl = document.getElementById("progressText");
+  const progressFillEl = document.getElementById("progressFill");
+  const resetWeekBtn = document.getElementById("resetWeekBtn");
+  const wipeAllBtn = document.getElementById("wipeAllBtn");
+  const historyBodyEl = document.getElementById("historyBody");
+  const weekSelectEl = document.getElementById("weekSelect");
+  const prevWeekBtn = document.getElementById("prevWeekBtn");
+  const nextWeekBtn = document.getElementById("nextWeekBtn");
+  const pillAchievedEl = document.getElementById("pillAchieved");
+  const pillStreakEl = document.getElementById("pillStreak");
+
+  // -------- State --------
+  const todayKey = isoWeekKey(new Date());
+  let all = loadAll();
+  let selectedWeekKey = all.__selectedWeekKey || todayKey;
+  ensureWeek(all, selectedWeekKey);
+  saveAll(all);
+
+  // -------- Logic --------
+  function countChecked(arr){ return arr.reduce((a,b)=>a + (b ? 1 : 0), 0); }
+
+  function achievedForWeek(weekData){
+    let achievedCats = 0;
+    for (const g of GOALS){
+      const done = countChecked(weekData[g.id] || []);
+      if (done >= TARGET) achievedCats++;
+    }
+    return achievedCats;
+  }
+
+  function computeStreak(allData){
+    // Streak = consecutive weeks ending at the most recent existing week
+    // where all 3 categories are achieved.
+    const keys = Object.keys(allData).filter(k => /^\d{4}-W\d{2}$/.test(k));
+    if(keys.length === 0) return 0;
+
+    keys.sort((a,b) => weekKeyToApproxDate(a) - weekKeyToApproxDate(b));
+    let streak = 0;
+
+    // Start from most recent existing week and go backwards in week steps.
+    let current = keys[keys.length - 1];
+
+    while(true){
+      const wd = allData[current];
+      if(!wd) break;
+      if(achievedForWeek(wd) === 3){
+        streak++;
+        current = addWeeksToKey(current, -1);
+        continue;
+      }
+      break;
+    }
+    return streak;
+  }
+
+  function rebuildWeekSelect(){
+    // Show existing weeks + also ensure today exists.
+    const keys = new Set(Object.keys(all).filter(k => /^\d{4}-W\d{2}$/.test(k)));
+    keys.add(todayKey);
+    keys.add(selectedWeekKey);
+
+    const arr = Array.from(keys);
+    arr.sort((a,b) => weekKeyToApproxDate(a) - weekKeyToApproxDate(b));
+
+    weekSelectEl.innerHTML = "";
+    for (const k of arr){
+      const opt = document.createElement("option");
+      opt.value = k;
+      opt.textContent = k === todayKey ? `${k} (current)` : k;
+      weekSelectEl.appendChild(opt);
+    }
+    weekSelectEl.value = selectedWeekKey;
+  }
+
+  function setSelectedWeek(weekKey){
+    selectedWeekKey = weekKey;
+    ensureWeek(all, selectedWeekKey);
+    all.__selectedWeekKey = selectedWeekKey;
+    saveAll(all);
+    rebuildWeekSelect();
+    render();
+  }
+
+  function renderCards(weekData){
+    cardsEl.innerHTML = "";
+    for (const goal of GOALS){
+      const arr = weekData[goal.id];
+      const done = countChecked(arr);
+      const achieved = done >= TARGET;
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+      const h2 = document.createElement("h2");
+      const title = document.createElement("span");
+      title.textContent = goal.title;
+
+      const badge = document.createElement("span");
+      badge.className = "pill" + (achieved ? " ok" : " warn");
+      badge.textContent = achieved ? "Achieved ✓" : `${done} / ${TARGET}`;
+
+      h2.appendChild(title);
+      h2.appendChild(badge);
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      const left = document.createElement("div");
+      left.textContent = `${done} checked`;
+      const right = document.createElement("div");
+      if (done === 0) right.innerHTML = `<span style="color:var(--danger); font-weight:900;">Start small</span>`;
+      else if (!achieved) right.innerHTML = `<span style="color:var(--warn); font-weight:900;">${TARGET - done} to go</span>`;
+      else right.innerHTML = `<span style="color:var(--ok); font-weight:900;">3+ done</span>`;
+      meta.appendChild(left);
+      meta.appendChild(right);
+
+      const list = document.createElement("div");
+      list.className = "list";
+
+      arr.forEach((checked, idx) => {
+        const item = document.createElement("div");
+        item.className = "item";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = checked;
+        cb.id = `${selectedWeekKey}-${goal.id}-${idx}`;
+
+        const label = document.createElement("label");
+        label.setAttribute("for", cb.id);
+
+        const num = document.createElement("span");
+        num.className = "num";
+        num.textContent = `#${idx+1}`;
+
+        const text = document.createElement("span");
+        text.textContent = idx < 3 ? "Counts toward 3" : "Extra credit";
+
+        label.appendChild(num);
+        label.appendChild(text);
+
+        cb.addEventListener("change", () => {
+          weekData[goal.id][idx] = cb.checked;
+          all[selectedWeekKey] = weekData;
+          saveAll(all);
+          render();
+        });
+
+        item.appendChild(cb);
+        item.appendChild(label);
+        list.appendChild(item);
+      });
+
+      const actions = document.createElement("div");
+      actions.className = "card-actions";
+
+      const addBtn = document.createElement("button");
+      addBtn.textContent = "+ Add checkbox";
+      addBtn.addEventListener("click", () => {
+        weekData[goal.id].push(false);
+        all[selectedWeekKey] = weekData;
+        saveAll(all);
+        render();
+      });
+
+      const clearBtn = document.createElement("button");
+      clearBtn.textContent = "Clear";
+      clearBtn.addEventListener("click", () => {
+        weekData[goal.id] = [false,false,false];
+        all[selectedWeekKey] = weekData;
+        saveAll(all);
+        render();
+      });
+
+      actions.appendChild(addBtn);
+      actions.appendChild(clearBtn);
+
+      card.appendChild(h2);
+      card.appendChild(meta);
+      card.appendChild(list);
+      card.appendChild(actions);
+
+      cardsEl.appendChild(card);
+    }
+  }
+
+  function renderHistory(){
+    const keys = Object.keys(all).filter(k => /^\d{4}-W\d{2}$/.test(k));
+    keys.sort((a,b) => weekKeyToApproxDate(b) - weekKeyToApproxDate(a)); // newest first
+
+    historyBodyEl.innerHTML = "";
+
+    if(keys.length === 0){
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="muted" colspan="5">No history yet. Tick some boxes 🙂</td>`;
+      historyBodyEl.appendChild(tr);
+      return;
+    }
+
+    for (const k of keys){
+      const wd = all[k];
+      const gym = countChecked(wd.gym || []);
+      const med = countChecked(wd.meditation || []);
+      const na  = countChecked(wd.noAlcohol || []);
+      const cats = achievedForWeek(wd);
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:900;">${k}${k===todayKey ? " <span class='pill ok' style='padding:2px 8px; font-size:11px;'>current</span>" : ""}</div>
+          <div class="muted" style="font-size:12px; margin-top:4px;">${labelForWeek(k).split(" • ")[1]}</div>
+        </td>
+        <td>${gym} ${gym>=TARGET ? "✓" : ""}</td>
+        <td>${med} ${med>=TARGET ? "✓" : ""}</td>
+        <td>${na} ${na>=TARGET ? "✓" : ""}</td>
+        <td style="font-weight:900;">${cats} / 3</td>
+      `;
+      tr.style.cursor = "pointer";
+      tr.title = "Click to jump to this week";
+      tr.addEventListener("click", () => setSelectedWeek(k));
+      historyBodyEl.appendChild(tr);
+    }
+  }
+
+  function render(){
+    all = loadAll();
+    ensureWeek(all, selectedWeekKey);
+    const weekData = all[selectedWeekKey];
+
+    weekLabelEl.textContent = labelForWeek(selectedWeekKey);
+
+    // Summary/progress: total checkmarks vs 9 target
+    const achievedCats = achievedForWeek(weekData);
+    const totalChecks = GOALS.reduce((acc,g) => acc + countChecked(weekData[g.id] || []), 0);
+    const totalTarget = GOALS.length * TARGET;
+    const capped = Math.min(totalChecks, totalTarget);
+    const pct = Math.round((capped / totalTarget) * 100);
+
+    summaryTextEl.textContent = `${achievedCats} / 3 categories achieved • ${totalChecks} total checkmarks (target 9)`;
+    progressTextEl.textContent = `${capped} / ${totalTarget} towards target`;
+    progressFillEl.style.width = `${pct}%`;
+
+    pillAchievedEl.textContent = `${achievedCats} / 3 achieved`;
+    pillAchievedEl.className = "pill" + (achievedCats === 3 ? " ok" : " warn");
+
+    const streak = computeStreak(all);
+    pillStreakEl.textContent = `Streak: ${streak}`;
+    pillStreakEl.className = "pill" + (streak > 0 ? " ok" : "");
+
+    renderCards(weekData);
+    renderHistory();
+  }
+
+  // -------- Events --------
+  weekSelectEl.addEventListener("change", () => setSelectedWeek(weekSelectEl.value));
+
+  prevWeekBtn.addEventListener("click", () => {
+    setSelectedWeek(addWeeksToKey(selectedWeekKey, -1));
+  });
+
+  nextWeekBtn.addEventListener("click", () => {
+    setSelectedWeek(addWeeksToKey(selectedWeekKey, +1));
+  });
+
+  resetWeekBtn.addEventListener("click", () => {
+    if (!confirm(`Reset ${selectedWeekKey}?`)) return;
+    all = loadAll();
+    all[selectedWeekKey] = {};
+    for (const g of GOALS) all[selectedWeekKey][g.id] = [false,false,false];
+    all.__selectedWeekKey = selectedWeekKey;
+    saveAll(all);
+    render();
+  });
+
+  wipeAllBtn.addEventListener("click", () => {
+    if (!confirm("This deletes ALL saved weeks on this browser. Continue?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    all = loadAll();
+    ensureWeek(all, todayKey);
+    all.__selectedWeekKey = todayKey;
+    saveAll(all);
+    selectedWeekKey = todayKey;
+    rebuildWeekSelect();
+    render();
+  });
+
+  // -------- Init --------
+  rebuildWeekSelect();
+  render();
+
+  // -------- Optional: Service Worker registration (for PWA) --------
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try { await navigator.serviceWorker.register("./sw.js"); }
+      catch (e) { /* ignore */ }
+    });
+  }
+})();
+</script>
+</body>
+</html>
