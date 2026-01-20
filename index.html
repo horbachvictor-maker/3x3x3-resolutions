@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>3×3×3 Resolutions</title>
 
-  <!-- PWA (optional but works nicely on Replit / hosted) -->
+  <!-- PWA (optional but works nicely when hosted) -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0b0f17">
 
@@ -68,7 +68,7 @@
     .footer{
       margin-top: 10px;
       display:flex;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       gap: 12px;
       padding: 14px;
@@ -78,7 +78,7 @@
     }
     .big{ font-size: 14px; font-weight: 900; margin:0; }
     .tiny{ margin:0; color:var(--muted); font-size: 12px; }
-    .progress{ display:flex; flex-direction:column; align-items:flex-end; gap: 6px; min-width: 220px; }
+    .progress{ display:flex; flex-direction:column; align-items:flex-end; gap: 6px; min-width: 240px; }
     .bar{
       width: 100%;
       height: 10px;
@@ -158,10 +158,9 @@
     th{ color: var(--muted); font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing:.06em; }
     td.muted{ color: var(--muted); }
     .help{ margin-top: 10px; color: var(--muted); font-size: 12px; }
-    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      padding: 2px 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <header>
@@ -186,11 +185,23 @@
       <div>
         <p class="big">Selected week</p>
         <p class="tiny" id="summaryText">Loading…</p>
+
         <div class="row" style="margin-top:8px;">
           <span class="pill" id="pillAchieved">0 / 3 achieved</span>
           <span class="pill" id="pillStreak">Streak: 0</span>
+          <span class="pill" id="pillPass">Pass days: 0</span>
+          <span class="pill" id="pillReq">Target: 3 / category</span>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="passMinus">− Pass</button>
+          <button id="passPlus">+ Pass</button>
+          <span class="help" style="margin:0;">
+            Pass days reduce the required target this week (max 3).
+          </span>
         </div>
       </div>
+
       <div class="progress">
         <div class="tiny" id="progressText">0 / 9 towards target</div>
         <div class="bar" aria-label="Weekly progress"><div id="progressFill"></div></div>
@@ -202,7 +213,7 @@
     <div class="section">
       <h3>Weekly history</h3>
       <div class="help" style="margin-top:-6px; margin-bottom:10px;">
-        Achieved = <b>3+</b> checkmarks in that category for the week.
+        Achieved = meeting this week’s required target per category (normally 3; reduced by pass days).
       </div>
       <div style="overflow:auto;">
         <table>
@@ -212,6 +223,7 @@
               <th>Gym</th>
               <th>Meditation</th>
               <th>No alcohol</th>
+              <th>Pass days</th>
               <th>Categories achieved</th>
             </tr>
           </thead>
@@ -220,17 +232,21 @@
       </div>
     </div>
 
+    <div class="section">
+      <h3>Overall statistics</h3>
+      <div id="overallStats" class="help">Loading…</div>
+    </div>
+
     <p class="help">
-      Tips: Use “+ Add checkbox” if you did extra sessions. The goal is <b>3+</b> per category to count as achieved.
+      Tips: Use “+ Add checkbox” if you did extra sessions. Extra sessions help totals, but percentages are capped at 100%.
       Data saves locally in your browser (no account, no cost).
-      On Replit/hosted you can also “Add to Home Screen” (PWA).
     </p>
   </div>
 
 <script>
 (() => {
   // -------- Config --------
-  const TARGET = 3; // achieved threshold
+  const TARGET = 3; // default weekly target per category
   const GOALS = [
     { id: "gym",        title: "Gym" },
     { id: "meditation", title: "Meditation" },
@@ -271,14 +287,11 @@
   }
 
   function weekKeyToApproxDate(weekKey){
-    // Produce a date inside that ISO week (Monday) for navigation.
-    // Parse "YYYY-Www"
     const m = /^(\d{4})-W(\d{2})$/.exec(weekKey);
     if(!m) return new Date();
     const year = Number(m[1]);
     const week = Number(m[2]);
 
-    // ISO week 1 is the week with Jan 4th. Find Monday of week 1 then add weeks.
     const jan4 = new Date(year, 0, 4);
     const week1Mon = startOfISOWeek(jan4);
     const d = new Date(week1Mon);
@@ -305,7 +318,7 @@
   }
 
   // -------- Storage --------
-  const STORAGE_KEY = "resolutionsTracker.v2";
+  const STORAGE_KEY = "resolutionsTracker.v3";
 
   function loadAll(){
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -319,62 +332,52 @@
     if(!all[weekKey]) all[weekKey] = {};
     for (const g of GOALS){
       if(!Array.isArray(all[weekKey][g.id])) all[weekKey][g.id] = [false,false,false];
-      // Defensive: ensure at least 3 slots exist
       while(all[weekKey][g.id].length < 3) all[weekKey][g.id].push(false);
     }
+    if (typeof all[weekKey].__passes !== "number") all[weekKey].__passes = 0; // NEW
     return all[weekKey];
   }
 
-  // -------- UI refs --------
-  const cardsEl = document.getElementById("cards");
-  const weekLabelEl = document.getElementById("weekLabel");
-  const summaryTextEl = document.getElementById("summaryText");
-  const progressTextEl = document.getElementById("progressText");
-  const progressFillEl = document.getElementById("progressFill");
-  const resetWeekBtn = document.getElementById("resetWeekBtn");
-  const wipeAllBtn = document.getElementById("wipeAllBtn");
-  const historyBodyEl = document.getElementById("historyBody");
-  const weekSelectEl = document.getElementById("weekSelect");
-  const prevWeekBtn = document.getElementById("prevWeekBtn");
-  const nextWeekBtn = document.getElementById("nextWeekBtn");
-  const pillAchievedEl = document.getElementById("pillAchieved");
-  const pillStreakEl = document.getElementById("pillStreak");
-
-  // -------- State --------
-  const todayKey = isoWeekKey(new Date());
-  let all = loadAll();
-  let selectedWeekKey = all.__selectedWeekKey || todayKey;
-  ensureWeek(all, selectedWeekKey);
-  saveAll(all);
-
-  // -------- Logic --------
+  // -------- Helpers --------
   function countChecked(arr){ return arr.reduce((a,b)=>a + (b ? 1 : 0), 0); }
 
-  function achievedForWeek(weekData){
-    let achievedCats = 0;
+  function passesForWeek(weekData){
+    // store any 0..7, but we only use up to 3 to reduce targets
+    return Math.max(0, Math.min(7, Number(weekData.__passes || 0)));
+  }
+
+  function requiredTargetForWeek(weekData){
+    // pass days reduce target by up to 3
+    const p = Math.min(3, passesForWeek(weekData));
+    return Math.max(0, TARGET - p);
+  }
+
+  function achievedCatsForWeek(weekData){
+    const req = requiredTargetForWeek(weekData);
+    let achieved = 0;
     for (const g of GOALS){
       const done = countChecked(weekData[g.id] || []);
-      if (done >= TARGET) achievedCats++;
+      if (done >= req) achieved++;
     }
-    return achievedCats;
+    return { achieved, req };
+  }
+
+  function isWeekAchievedForStreak(weekData){
+    return achievedCatsForWeek(weekData).achieved === 3;
   }
 
   function computeStreak(allData){
-    // Streak = consecutive weeks ending at the most recent existing week
-    // where all 3 categories are achieved.
     const keys = Object.keys(allData).filter(k => /^\d{4}-W\d{2}$/.test(k));
     if(keys.length === 0) return 0;
 
     keys.sort((a,b) => weekKeyToApproxDate(a) - weekKeyToApproxDate(b));
     let streak = 0;
 
-    // Start from most recent existing week and go backwards in week steps.
     let current = keys[keys.length - 1];
-
     while(true){
       const wd = allData[current];
       if(!wd) break;
-      if(achievedForWeek(wd) === 3){
+      if(isWeekAchievedForStreak(wd)){
         streak++;
         current = addWeeksToKey(current, -1);
         continue;
@@ -384,8 +387,75 @@
     return streak;
   }
 
+  function computeOverallStats(allData){
+    const weekKeys = Object.keys(allData).filter(k => /^\d{4}-W\d{2}$/.test(k));
+    let weeksCounted = 0;
+    let passDaysTotal = 0;
+
+    const totals = { gym: 0, meditation: 0, noAlcohol: 0 };
+
+    for (const k of weekKeys){
+      const wd = allData[k];
+      if(!wd) continue;
+      weeksCounted++;
+      passDaysTotal += passesForWeek(wd);
+
+      totals.gym += countChecked(wd.gym || []);
+      totals.meditation += countChecked(wd.meditation || []);
+      totals.noAlcohol += countChecked(wd.noAlcohol || []);
+    }
+
+    const availableDays = Math.max(0, weeksCounted * 7 - passDaysTotal);
+
+    const pctCapped = (n) =>
+      availableDays ? Math.min(100, Math.round((n / availableDays) * 100)) : 0;
+
+    return {
+      weeksCounted,
+      passDaysTotal,
+      availableDays,
+      totals,
+      percentages: {
+        gym: pctCapped(totals.gym),
+        meditation: pctCapped(totals.meditation),
+        noAlcohol: pctCapped(totals.noAlcohol),
+      }
+    };
+  }
+
+  // -------- UI refs --------
+  const cardsEl = document.getElementById("cards");
+  const weekLabelEl = document.getElementById("weekLabel");
+  const summaryTextEl = document.getElementById("summaryText");
+  const progressTextEl = document.getElementById("progressText");
+  const progressFillEl = document.getElementById("progressFill");
+
+  const resetWeekBtn = document.getElementById("resetWeekBtn");
+  const wipeAllBtn = document.getElementById("wipeAllBtn");
+  const historyBodyEl = document.getElementById("historyBody");
+
+  const weekSelectEl = document.getElementById("weekSelect");
+  const prevWeekBtn = document.getElementById("prevWeekBtn");
+  const nextWeekBtn = document.getElementById("nextWeekBtn");
+
+  const pillAchievedEl = document.getElementById("pillAchieved");
+  const pillStreakEl = document.getElementById("pillStreak");
+  const pillPassEl = document.getElementById("pillPass");
+  const pillReqEl = document.getElementById("pillReq");
+
+  const passMinusBtn = document.getElementById("passMinus");
+  const passPlusBtn = document.getElementById("passPlus");
+
+  const overallStatsEl = document.getElementById("overallStats");
+
+  // -------- State --------
+  const todayKey = isoWeekKey(new Date());
+  let all = loadAll();
+  let selectedWeekKey = all.__selectedWeekKey || todayKey;
+  ensureWeek(all, selectedWeekKey);
+  saveAll(all);
+
   function rebuildWeekSelect(){
-    // Show existing weeks + also ensure today exists.
     const keys = new Set(Object.keys(all).filter(k => /^\d{4}-W\d{2}$/.test(k)));
     keys.add(todayKey);
     keys.add(selectedWeekKey);
@@ -414,10 +484,12 @@
 
   function renderCards(weekData){
     cardsEl.innerHTML = "";
+    const req = requiredTargetForWeek(weekData);
+
     for (const goal of GOALS){
       const arr = weekData[goal.id];
       const done = countChecked(arr);
-      const achieved = done >= TARGET;
+      const achieved = done >= req;
 
       const card = document.createElement("div");
       card.className = "card";
@@ -428,7 +500,7 @@
 
       const badge = document.createElement("span");
       badge.className = "pill" + (achieved ? " ok" : " warn");
-      badge.textContent = achieved ? "Achieved ✓" : `${done} / ${TARGET}`;
+      badge.textContent = achieved ? "Achieved ✓" : `${done} / ${req}`;
 
       h2.appendChild(title);
       h2.appendChild(badge);
@@ -438,9 +510,9 @@
       const left = document.createElement("div");
       left.textContent = `${done} checked`;
       const right = document.createElement("div");
-      if (done === 0) right.innerHTML = `<span style="color:var(--danger); font-weight:900;">Start small</span>`;
-      else if (!achieved) right.innerHTML = `<span style="color:var(--warn); font-weight:900;">${TARGET - done} to go</span>`;
-      else right.innerHTML = `<span style="color:var(--ok); font-weight:900;">3+ done</span>`;
+      if (done === 0 && req > 0) right.innerHTML = `<span style="color:var(--danger); font-weight:900;">Start small</span>`;
+      else if (!achieved) right.innerHTML = `<span style="color:var(--warn); font-weight:900;">${req - done} to go</span>`;
+      else right.innerHTML = `<span style="color:var(--ok); font-weight:900;">met target</span>`;
       meta.appendChild(left);
       meta.appendChild(right);
 
@@ -464,7 +536,7 @@
         num.textContent = `#${idx+1}`;
 
         const text = document.createElement("span");
-        text.textContent = idx < 3 ? "Counts toward 3" : "Extra credit";
+        text.textContent = idx < 3 ? "Counts toward target" : "Extra credit";
 
         label.appendChild(num);
         label.appendChild(text);
@@ -517,12 +589,11 @@
   function renderHistory(){
     const keys = Object.keys(all).filter(k => /^\d{4}-W\d{2}$/.test(k));
     keys.sort((a,b) => weekKeyToApproxDate(b) - weekKeyToApproxDate(a)); // newest first
-
     historyBodyEl.innerHTML = "";
 
     if(keys.length === 0){
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="muted" colspan="5">No history yet. Tick some boxes 🙂</td>`;
+      tr.innerHTML = `<td class="muted" colspan="6">No history yet. Tick some boxes 🙂</td>`;
       historyBodyEl.appendChild(tr);
       return;
     }
@@ -532,24 +603,40 @@
       const gym = countChecked(wd.gym || []);
       const med = countChecked(wd.meditation || []);
       const na  = countChecked(wd.noAlcohol || []);
-      const cats = achievedForWeek(wd);
+
+      const pass = passesForWeek(wd);
+      const { achieved, req } = achievedCatsForWeek(wd);
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>
           <div style="font-weight:900;">${k}${k===todayKey ? " <span class='pill ok' style='padding:2px 8px; font-size:11px;'>current</span>" : ""}</div>
           <div class="muted" style="font-size:12px; margin-top:4px;">${labelForWeek(k).split(" • ")[1]}</div>
+          <div class="muted" style="font-size:12px; margin-top:4px;">Target: ${req}/category</div>
         </td>
-        <td>${gym} ${gym>=TARGET ? "✓" : ""}</td>
-        <td>${med} ${med>=TARGET ? "✓" : ""}</td>
-        <td>${na} ${na>=TARGET ? "✓" : ""}</td>
-        <td style="font-weight:900;">${cats} / 3</td>
+        <td>${gym}</td>
+        <td>${med}</td>
+        <td>${na}</td>
+        <td>${pass}</td>
+        <td style="font-weight:900;">${achieved} / 3</td>
       `;
       tr.style.cursor = "pointer";
       tr.title = "Click to jump to this week";
       tr.addEventListener("click", () => setSelectedWeek(k));
       historyBodyEl.appendChild(tr);
     }
+  }
+
+  function renderOverallStats(){
+    const s = computeOverallStats(all);
+    overallStatsEl.innerHTML = `
+      Weeks tracked: <b>${s.weeksCounted}</b><br>
+      Pass days used: <b>${s.passDaysTotal}</b><br>
+      Available days: <b>${s.availableDays}</b><br><br>
+      Gym: <b>${s.totals.gym}</b> (${s.percentages.gym}% of available days)<br>
+      Meditation: <b>${s.totals.meditation}</b> (${s.percentages.meditation}% of available days)<br>
+      No alcohol: <b>${s.totals.noAlcohol}</b> (${s.percentages.noAlcohol}% of available days)
+    `;
   }
 
   function render(){
@@ -559,15 +646,27 @@
 
     weekLabelEl.textContent = labelForWeek(selectedWeekKey);
 
-    // Summary/progress: total checkmarks vs 9 target
-    const achievedCats = achievedForWeek(weekData);
-    const totalChecks = GOALS.reduce((acc,g) => acc + countChecked(weekData[g.id] || []), 0);
-    const totalTarget = GOALS.length * TARGET;
-    const capped = Math.min(totalChecks, totalTarget);
-    const pct = Math.round((capped / totalTarget) * 100);
+    const passDaysThisWeek = passesForWeek(weekData);
+    const req = requiredTargetForWeek(weekData);
+    const { achieved: achievedCats } = achievedCatsForWeek(weekData);
 
-    summaryTextEl.textContent = `${achievedCats} / 3 categories achieved • ${totalChecks} total checkmarks (target 9)`;
-    progressTextEl.textContent = `${capped} / ${totalTarget} towards target`;
+    pillPassEl.textContent = `Pass days: ${passDaysThisWeek}`;
+    pillReqEl.textContent = `Target: ${req} / category`;
+
+    // Summary/progress bar:
+    // We track progress towards "3 categories achieved" and also checkmarks towards req*3 (capped)
+    const totalChecks = GOALS.reduce((acc,g) => acc + countChecked(weekData[g.id] || []), 0);
+    const targetTotal = req * GOALS.length; // req * 3
+    const capped = targetTotal ? Math.min(totalChecks, targetTotal) : targetTotal;
+
+    const pct = targetTotal ? Math.round((capped / targetTotal) * 100) : 100;
+
+    summaryTextEl.textContent =
+      `${achievedCats} / 3 categories achieved • ${totalChecks} total checkmarks • Target this week: ${req}/category (passes: ${passDaysThisWeek})`;
+
+    progressTextEl.textContent =
+      targetTotal ? `${capped} / ${targetTotal} towards target` : `Target waived (0 required)`;
+
     progressFillEl.style.width = `${pct}%`;
 
     pillAchievedEl.textContent = `${achievedCats} / 3 achieved`;
@@ -579,17 +678,30 @@
 
     renderCards(weekData);
     renderHistory();
+    renderOverallStats();
   }
 
   // -------- Events --------
   weekSelectEl.addEventListener("change", () => setSelectedWeek(weekSelectEl.value));
 
-  prevWeekBtn.addEventListener("click", () => {
-    setSelectedWeek(addWeeksToKey(selectedWeekKey, -1));
+  prevWeekBtn.addEventListener("click", () => setSelectedWeek(addWeeksToKey(selectedWeekKey, -1)));
+  nextWeekBtn.addEventListener("click", () => setSelectedWeek(addWeeksToKey(selectedWeekKey, +1)));
+
+  passMinusBtn.addEventListener("click", () => {
+    all = loadAll();
+    ensureWeek(all, selectedWeekKey);
+    all[selectedWeekKey].__passes = Math.max(0, passesForWeek(all[selectedWeekKey]) - 1);
+    saveAll(all);
+    render();
   });
 
-  nextWeekBtn.addEventListener("click", () => {
-    setSelectedWeek(addWeeksToKey(selectedWeekKey, +1));
+  passPlusBtn.addEventListener("click", () => {
+    all = loadAll();
+    ensureWeek(all, selectedWeekKey);
+    // allow 0..7 stored, but effect caps at 3; feel free to change this to Math.min(3, ...) if you want
+    all[selectedWeekKey].__passes = Math.min(7, passesForWeek(all[selectedWeekKey]) + 1);
+    saveAll(all);
+    render();
   });
 
   resetWeekBtn.addEventListener("click", () => {
@@ -597,6 +709,7 @@
     all = loadAll();
     all[selectedWeekKey] = {};
     for (const g of GOALS) all[selectedWeekKey][g.id] = [false,false,false];
+    all[selectedWeekKey].__passes = 0;
     all.__selectedWeekKey = selectedWeekKey;
     saveAll(all);
     render();
@@ -606,10 +719,10 @@
     if (!confirm("This deletes ALL saved weeks on this browser. Continue?")) return;
     localStorage.removeItem(STORAGE_KEY);
     all = loadAll();
-    ensureWeek(all, todayKey);
-    all.__selectedWeekKey = todayKey;
+    ensureWeek(all, isoWeekKey(new Date()));
+    all.__selectedWeekKey = isoWeekKey(new Date());
     saveAll(all);
-    selectedWeekKey = todayKey;
+    selectedWeekKey = all.__selectedWeekKey;
     rebuildWeekSelect();
     render();
   });
@@ -618,7 +731,7 @@
   rebuildWeekSelect();
   render();
 
-  // -------- Optional: Service Worker registration (for PWA) --------
+  // -------- Optional: Service Worker registration (for offline/PWA) --------
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", async () => {
       try { await navigator.serviceWorker.register("./sw.js"); }
